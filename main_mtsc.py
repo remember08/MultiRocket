@@ -30,8 +30,9 @@ save = True
 num_threads = 0
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--datapath", type=str, required=False, default="C:/Users/changt/workspace/Dataset/Multivariate2018_ts/")
-parser.add_argument("-p", "--problem", type=str, required=False, default="UWaveGestureLibrary")
+parser.add_argument("-d", "--datapath", type=str, required=False, default="./data/sample_mtsc/")
+# parser.add_argument("-p", "--problem", type=str, required=False, default="UWaveGestureLibrary")
+parser.add_argument("-p", "--problem", type=str, required=False, default="ArticularyWordRecognition")
 parser.add_argument("-i", "--iter", type=int, required=False, default=0)
 parser.add_argument("-n", "--num_features", type=int, required=False, default=50000)
 parser.add_argument("-t", "--num_threads", type=int, required=False, default=-1)
@@ -54,10 +55,9 @@ if __name__ == '__main__':
 
     data_folder = data_path + problem + "/"
 
-    if os.path.exists(data_folder):
+    if os.path.exists(data_folder): # 如果数据存在，才继续
         if num_threads > 0:
             numba.set_num_threads(num_threads)
-        output_path = os.getcwd() + "/output/"
 
         start = time.perf_counter()
 
@@ -94,13 +94,14 @@ if __name__ == '__main__':
         X_train = process_ts_data(X_train, normalise=False)
         X_test = process_ts_data(X_test, normalise=False)
 
-        nb_classes = len(np.unique(np.concatenate((y_train, y_test), axis=0)))
+        nb_classes = len(np.unique(np.concatenate((y_train, y_test), axis=0))) # 统计标签总数量
 
         classifier = MultiRocket(
             num_features=num_features,
             classifier="logistic",
             verbose=verbose
         )
+        
         yhat_train = classifier.fit(
             X_train, y_train,
             predict_on_train=False
@@ -115,14 +116,14 @@ if __name__ == '__main__':
         test_acc = accuracy_score(y_test, yhat_test)
 
         # get cpu information
-        physical_cores = psutil.cpu_count(logical=False)
-        logical_cores = psutil.cpu_count(logical=True)
-        cpu_freq = psutil.cpu_freq()
-        max_freq = cpu_freq.max
-        min_freq = cpu_freq.min
-        memory = np.round(psutil.virtual_memory().total / 1e9)
+        # physical_cores = psutil.cpu_count(logical=False)
+        # logical_cores = psutil.cpu_count(logical=True)
+        # cpu_freq = psutil.cpu_freq()
+        # max_freq = cpu_freq.max
+        # min_freq = cpu_freq.min
+        # memory = np.round(psutil.virtual_memory().total / 1e9)
 
-        df_metrics = pd.DataFrame(data=np.zeros((1, 21), dtype=np.float), index=[0],
+        df_metrics = pd.DataFrame(data=np.zeros((1, 14), dtype=np.float32), index=[0],
                                   columns=['timestamp', 'itr', 'classifier',
                                            'num_features',
                                            'dataset',
@@ -132,11 +133,7 @@ if __name__ == '__main__':
                                            'apply_kernel_on_train_time',
                                            'apply_kernel_on_test_time',
                                            'train_transform_time',
-                                           'test_transform_time',
-                                           'machine', 'processor',
-                                           'physical_cores',
-                                           "logical_cores",
-                                           'max_freq', 'min_freq', 'memory'])
+                                           'test_transform_time'])
         df_metrics["timestamp"] = datetime.utcnow().replace(tzinfo=pytz.utc).strftime("%Y-%m-%d %H:%M:%S")
         df_metrics["itr"] = itr
         df_metrics["classifier"] = classifier_name
@@ -151,13 +148,6 @@ if __name__ == '__main__':
         df_metrics["apply_kernel_on_test_time"] = classifier.apply_kernel_on_test_duration
         df_metrics["train_transform_time"] = classifier.train_transforms_duration
         df_metrics["test_transform_time"] = classifier.test_transforms_duration
-        df_metrics["machine"] = socket.gethostname()
-        df_metrics["processor"] = platform.processor()
-        df_metrics["physical_cores"] = physical_cores
-        df_metrics["logical_cores"] = logical_cores
-        df_metrics["max_freq"] = max_freq
-        df_metrics["min_freq"] = min_freq
-        df_metrics["memory"] = memory
 
         print(df_metrics)
         if save:
